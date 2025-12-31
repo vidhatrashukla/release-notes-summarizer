@@ -109,28 +109,43 @@ ${formData.ticketDetails}
 
 Generate a release message following this EXACT format:
 
-IMPORTANT - The message MUST start with exactly these three lines in this order:
+IMPORTANT - The message MUST follow this exact structure:
+
 Line 1: 📱 ${versionLine}
 Line 2: 📅 ${formattedDate}
 Line 3: ⏰ ${formattedTime}
 
-Then continue with:
-- A blank line
-- Subject line based on the nature of changes
-- "Dear all,"
-- Brief intro explaining what this release includes
-- Organize changes into clear numbered sections with bold headers
-- Use simple, non-technical language focused on business impact
-- End with the closing statement: ${closingStatement}
+[Blank line]
+
+Subject: [Create a clear subject line based on the nature of changes]
+
+[Blank line]
+
+Dear all,
+
+We are making a [major/minor - choose based on scope of changes] release which is aimed at [briefly state the main goal - e.g., "improving system performance and fixing critical bugs" or "introducing new features for better user experience"].
+
+[Then organize the actual changes in numbered sections:]
+
+1. [Section Title - e.g., "Key Fixes:", "New Features:", "Improvements:"]
+   - [Detail 1]
+   - [Detail 2]
+
+2. [Next Section if needed]
+   - [Detail 1]
+   - [Detail 2]
+
+[Blank line]
+
+${closingStatement}
 
 Style guidelines:
-- Bold important headers and key terms
-- Number main points (1., 2., 3.)
-- Use sub-bullets (-) for details under main points where needed
+- Determine if it's a major or minor release based on the ticket details
+- Bold important headers and section titles
+- Use simple, non-technical language focused on business impact
 - Focus on WHAT changed and WHY it matters, not HOW it works
-- Group related changes together
-- Use clear section headers like "Key Fixes:", "New Features:", "Improvements:", etc.
 - Keep sentences clear and concise
+- Group related changes together
 
 Return ONLY the formatted release message, nothing else.`;
 
