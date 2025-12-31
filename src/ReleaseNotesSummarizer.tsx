@@ -25,14 +25,19 @@ export default function ReleaseNotesSummarizer() {
     }));
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+    const options: Intl.DateTimeFormatOptions = {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    };
     return date.toLocaleDateString('en-US', options);
   };
 
-  const formatTime = (timeString) => {
+  const formatTime = (timeString: string) => {
     if (!timeString) return '';
     const [hours, minutes] = timeString.split(':');
     const hour = parseInt(hours);
