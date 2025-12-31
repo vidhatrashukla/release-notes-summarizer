@@ -351,22 +351,6 @@ Return ONLY the formatted release message, nothing else.`;
               https://github.com/vidhatrashukla
             </a>
           </p>
-          <p className="mt-2 flex items-center justify-center gap-2">
-            Created for{' '}
-            <a
-              href="https://www.farmart.co/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 font-medium"
-            >
-              <img
-                src="https://www.farmart.co/static/media/farmart-logo.svg"
-                alt="FarMart Logo"
-                className="h-5 w-auto"
-              />
-              FarMart
-            </a>
-          </p>
         </div>
       </div>
     </div>
