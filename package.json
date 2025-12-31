@@ -1,6 +1,7 @@
 {
   "name": "release-notes-summarizer",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "homepage": "https://vidhatrashukla.github.io/release-notes-summarizer",
   "dependencies": {
