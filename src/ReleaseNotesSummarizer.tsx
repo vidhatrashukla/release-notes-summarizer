@@ -28,10 +28,10 @@ export default function ReleaseNotesSummarizer() {
   const generateReleaseNotes = async () => {
     setIsGenerating(true);
 
-    const apiKey = import.meta.env.VITE_ANTHROPIC_API_KEY;
+    const apiKey = import.meta.env.VITE_GROQ_API_KEY;
 
     if (!apiKey) {
-      setGeneratedMessage("Error: API key not configured. Please add your Anthropic API key to the .env file.");
+      setGeneratedMessage("Error: API key not configured. Please add your Groq API key to the .env file. Get a free API key at https://console.groq.com");
       setIsGenerating(false);
       return;
     }
@@ -106,28 +106,29 @@ Style guidelines:
 Return ONLY the formatted release message, nothing else.`;
 
     try {
-      const response = await fetch("https://api.anthropic.com/v1/messages", {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "x-api-key": apiKey,
-          "anthropic-version": "2023-06-01"
+          "Authorization": `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 2000,
+          model: "llama-3.3-70b-versatile",
           messages: [
             { role: "user", content: prompt }
           ],
+          max_tokens: 2000,
+          temperature: 0.7
         })
       });
 
       const data = await response.json();
-      const message = data.content
-        .filter(item => item.type === "text")
-        .map(item => item.text)
-        .join("\n");
-      
+
+      if (data.error) {
+        throw new Error(data.error.message || "API request failed");
+      }
+
+      const message = data.choices?.[0]?.message?.content || "No response generated";
       setGeneratedMessage(message);
     } catch (error) {
       setGeneratedMessage("Error generating release notes. Please try again.");

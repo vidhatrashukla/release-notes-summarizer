@@ -9,13 +9,14 @@ A web application that helps generate professional release messages for internal
 - Customizable release timing and downtime settings
 - Professional formatting with AI-powered content generation
 - One-click copy to clipboard
+- **Uses FREE Groq API** with Llama 3.3 70B model
 
 ## Setup
 
 ### Prerequisites
 
 - Node.js 16+ installed
-- An Anthropic API key ([get one here](https://console.anthropic.com/))
+- A free Groq API key ([get one here](https://console.groq.com))
 
 ### Installation
 
@@ -25,14 +26,19 @@ A web application that helps generate professional release messages for internal
    npm install
    ```
 
-3. Create a `.env` file in the root directory:
+3. Get a FREE Groq API key:
+   - Go to [console.groq.com](https://console.groq.com)
+   - Sign up for a free account
+   - Create an API key
+
+4. Create a `.env` file in the root directory:
    ```bash
    cp .env.example .env
    ```
 
-4. Add your Anthropic API key to the `.env` file:
+5. Add your Groq API key to the `.env` file:
    ```
-   VITE_ANTHROPIC_API_KEY=your_actual_api_key_here
+   VITE_GROQ_API_KEY=your_actual_api_key_here
    ```
 
 ### Development
@@ -73,10 +79,14 @@ npm run preview
    npm run deploy
    ```
 
-**Important Note on API Keys**:
-- The `.env` file is NOT deployed to GitHub Pages for security reasons
-- You'll need to set up your API key as a GitHub Secret and configure your deployment accordingly
-- Alternatively, consider using a backend proxy to avoid exposing API keys in the frontend
+**Setting up GitHub Secrets**:
+1. Go to your repository settings: `https://github.com/YOUR_USERNAME/release-notes-summarizer/settings/secrets/actions`
+2. Click **New repository secret**
+3. Name: `VITE_GROQ_API_KEY`
+4. Value: (paste your free Groq API key from console.groq.com)
+5. Click **Add secret**
+
+The GitHub Actions workflow will automatically use this secret when building and deploying.
 
 ## Usage
 
@@ -94,7 +104,15 @@ npm run preview
 - Vite
 - Tailwind CSS
 - Lucide React (icons)
-- Anthropic Claude API
+- Groq API (FREE) with Llama 3.3 70B model
+
+## Why Groq?
+
+Groq offers a completely FREE API with access to powerful models like Llama 3.3 70B. It's:
+- Fast and reliable
+- No credit card required
+- Generous free tier
+- Perfect for personal projects and internal tools
 
 ## Created By
 
