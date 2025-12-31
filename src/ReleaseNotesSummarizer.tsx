@@ -107,19 +107,23 @@ Closing Statement: ${closingStatement}
 Ticket Details:
 ${formData.ticketDetails}
 
-Generate a release message following this exact format and style:
+Generate a release message following this EXACT format:
 
-1. Start with emoji header containing version and date/time info
-2. Add a clear Subject line based on the nature of changes
-3. Begin with "Dear all,"
-4. Write a brief intro explaining what this release includes
-5. Organize changes into clear numbered sections with bold headers
-6. Use simple, non-technical language focused on business impact
-7. End with the closing statement provided above
-8. Keep it concise and professional
+IMPORTANT - The message MUST start with exactly these three lines in this order:
+Line 1: 📱 ${versionLine}
+Line 2: 📅 ${formattedDate}
+Line 3: ⏰ ${formattedTime}
+
+Then continue with:
+- A blank line
+- Subject line based on the nature of changes
+- "Dear all,"
+- Brief intro explaining what this release includes
+- Organize changes into clear numbered sections with bold headers
+- Use simple, non-technical language focused on business impact
+- End with the closing statement: ${closingStatement}
 
 Style guidelines:
-- Use emojis sparingly (calendar, clock, phone icons in header)
 - Bold important headers and key terms
 - Number main points (1., 2., 3.)
 - Use sub-bullets (-) for details under main points where needed
