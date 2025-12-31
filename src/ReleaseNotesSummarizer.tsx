@@ -25,6 +25,22 @@ export default function ReleaseNotesSummarizer() {
     }));
   };
 
+  const formatDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    const options = { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' };
+    return date.toLocaleDateString('en-US', options);
+  };
+
+  const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hours, minutes] = timeString.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    return `${displayHour}:${minutes}${ampm}`;
+  };
+
   const generateReleaseNotes = async () => {
     setIsGenerating(true);
 
@@ -41,8 +57,12 @@ export default function ReleaseNotesSummarizer() {
     if (formData.osFE) versionParts.push(`FE v${formData.osFE}`);
     if (formData.proFE) versionParts.push(`Pro FE v${formData.proFE}`);
     if (formData.proNative) versionParts.push(`Native ${formData.proNative}`);
-    
+
     const versionLine = versionParts.join(' / ');
+
+    // Format date and time
+    const formattedDate = formatDate(formData.releaseDate);
+    const formattedTime = formatTime(formData.releaseTime);
     
     // Determine release type
     const hasOS = formData.osBE || formData.osFE;
@@ -75,8 +95,8 @@ export default function ReleaseNotesSummarizer() {
     const prompt = `You are writing a release message for FarMart's internal team. The audience is non-technical end users of FarMart OS (web-based tool) and FarMart Pro (mobile app).
 
 Version: ${versionLine}
-Release Date: ${formData.releaseDate}
-Release Time: ${formData.releaseTime}
+Release Date: ${formattedDate}
+Release Time: ${formattedTime}
 Closing Statement: ${closingStatement}
 
 Ticket Details:
@@ -224,11 +244,10 @@ Return ONLY the formatted release message, nothing else.`;
                     Release Date *
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     name="releaseDate"
                     value={formData.releaseDate}
                     onChange={(e) => handleInputChange(e.target)}
-                    placeholder="e.g., Wednesday, Dec 31 2025"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -237,11 +256,10 @@ Return ONLY the formatted release message, nothing else.`;
                     Release Time *
                   </label>
                   <input
-                    type="text"
+                    type="time"
                     name="releaseTime"
                     value={formData.releaseTime}
                     onChange={(e) => handleInputChange(e.target)}
-                    placeholder="e.g., 3.30PM or 3.30PM - 4.30PM"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
