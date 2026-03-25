@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UX Test Cases - Release Notes Summarizer</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 { color: #333; border-bottom: 3px solid #3b82f6; padding-bottom: 10px; }
+        h2 { color: #2563eb; margin-top: 30px; }
+        .test-case {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 15px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-case h3 {
+            margin-top: 0;
+            color: #1f2937;
+        }
+        .issue {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 10px 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .critical {
+            background: #fee2e2;
+            border-left-color: #ef4444;
+        }
+        .improvement {
+            background: #d1fae5;
+            border-left-color: #10b981;
+        }
+        .priority-high { color: #dc2626; font-weight: bold; }
+        .priority-medium { color: #d97706; font-weight: bold; }
+        .priority-low { color: #059669; }
+        code {
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'Monaco', 'Consolas', monospace;
+        }
+        ul { line-height: 1.8; }
+    </style>
+</head>
+<body>
+    <h1>Release Notes Summarizer - UX Test Report</h1>
+    <p><strong>Test Date:</strong> March 25, 2026</p>
+    <p><strong>Test URL:</strong> http://localhost:5173/release-notes-summarizer/</p>
+
+    <h2>Critical Issues Found</h2>
+    
+    <div class="test-case">
+        <h3>Test 1: Repository Name Exposure</h3>
+        <div class="issue critical">
+            <strong class="priority-high">HIGH PRIORITY:</strong> Success/error notifications expose repository names
+            <p>When version fetch succeeds, notification shows: "Fetched version 1.2.3 from farmartos-backend"</p>
+            <p>This defeats the purpose of hiding repos in env variables. Repo names should be masked.</p>
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test 2: Branch Name Assumption</h3>
+        <div class="issue critical">
+            <strong class="priority-high">HIGH PRIORITY:</strong> Code assumes 'main' branch
+            <p>Line 62: <code>const branch = 'main';</code></p>
+            <p>If a repo uses 'master' or another default branch, version fetch will fail with 404.</p>
+        </div>
+    </div>
+
+    <h2>UX Issues Found</h2>
+
+    <div class="test-case">
+        <h3>Test 3: Form Data Loss on Refresh</h3>
+        <div class="issue">
+            <strong class="priority-high">HIGH PRIORITY:</strong> No auto-save/persistence
+            <p>Steps:</p>
+            <ol>
+                <li>Fill in all version fields and ticket details</li>
+                <li>Accidentally refresh the page</li>
+                <li>All data is lost - user must re-enter everything</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test 4: Notification Timing Issue</h3>
+        <div class="issue">
+            <strong class="priority-medium">MEDIUM PRIORITY:</strong> Notifications auto-dismiss too quickly
+            <p>Line 77: <code>setTimeout(() => setNotification(null), 3000);</code></p>
+            <p>3 seconds is too short for reading error messages. User might miss important info.</p>
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test 5: Time Input Not Auto-Filled</h3>
+        <div class="issue">
+            <strong class="priority-medium">MEDIUM PRIORITY:</strong> "Today" button only fills date
+            <p>When clicking "Today", only date is filled. Time remains empty.</p>
+            <p>Expected: Set time to current time (e.g., 14:30)</p>
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test 6: Generated Message Preview Too Small</h3>
+        <div class="issue">
+            <strong class="priority-medium">MEDIUM PRIORITY:</strong> Output textarea has fixed height
+            <p><code>min-h-[480px]</code> on line 556 - but long messages get cut off</p>
+            <p>No way to expand or scroll smoothly through generated content</p>
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test 7: No Input Format Guide</h3>
+        <div class="issue">
+            <strong class="priority-medium">MEDIUM PRIORITY:</strong> Ticket Details lacks formatting examples
+            <p>Users don't know optimal format. Should show example:</p>
+            <pre style="background:#f3f4f6;padding:10px;border-radius:4px;">
+FM-123: Fixed login issue
+FM-124: Added dashboard feature
+Bug fixes:
+- Fixed crash on mobile
+- Improved loading speed</pre>
+        </div>
+    </div>
+
+    <h2>Improvements Found</h2>
+
+    <div class="test-case">
+        <h3>Test 8: Field Validation</h3>
+        <div class="issue improvement">
+            <strong class="priority-low">LOW PRIORITY:</strong> Generate button validation works well
+            <p>Button is disabled until required fields are filled, with helpful message explaining why.</p>
+        </div>
+    </div>
+
+    <div class="test-case">
+        <h3>Test 9: Version Fetch UX</h3>
+        <div class="issue improvement">
+            <strong class="priority-low">LOW PRIORITY:</strong> Loading states are clear
+            <p>Spinners show during GitHub fetch, and buttons disable appropriately to prevent double-clicks.</p>
+        </div>
+    </div>
+
+    <h2>Recommendations</h2>
+    
+    <div class="test-case">
+        <h3>Priority Order for Fixes:</h3>
+        <ol>
+            <li><strong>Mask repo names in notifications</strong> - Show generic "Backend" instead of "farmartos-backend"</li>
+            <li><strong>Add localStorage persistence</strong> - Save form data every 5 seconds</li>
+            <li><strong>Try both main and master branches</strong> - Fallback logic for GitHub fetch</li>
+            <li><strong>Increase notification duration to 8 seconds</strong> - Or add manual dismiss button</li>
+            <li><strong>Auto-fill current time with "Today" button</strong> - Set to next rounded hour</li>
+            <li><strong>Add expandable output view</strong> - Modal or larger view for long messages</li>
+            <li><strong>Add template/example for ticket details</strong> - Collapsible help section</li>
+        </ol>
+    </div>
+
+    <div class="test-case">
+        <h3>Test Execution Script</h3>
+        <p>Copy this into browser console to test:</p>
+        <pre style="background:#1f2937;color:#e5e7eb;padding:15px;border-radius:4px;overflow-x:auto;">
+// Test 1: Fill form and refresh
+localStorage.setItem('test_data', JSON.stringify({
+  osBE: '1.0.0',
+  ticketDetails: 'Test ticket'
+}));
+console.log('Data saved. Refresh page to test persistence.');
+
+// Test 2: Check notification timing
+console.log('Click fetch version button and count how long notification stays');
+
+// Test 3: Check output scrolling
+console.log('Generate a long message and verify scrolling works smoothly');
+        </pre>
+    </div>
+
+    <script>
+        // Auto-refresh test
+        console.log('UX Test Report loaded. Review issues above and implement fixes.');
+    </script>
+</body>
+</html>

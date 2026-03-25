@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Copy, Sparkles, Loader2, RefreshCw } from 'lucide-react';
 
 interface GitHubRepo {
@@ -8,12 +8,22 @@ interface GitHubRepo {
   path?: string;
 }
 
-const REPO_CONFIGS: GitHubRepo[] = [
-  { owner: 'FarMart-Engineering', repo: 'farmartos-backend', field: 'osBE' },
-  { owner: 'FarMart-Engineering', repo: 'farmartos-frontend', field: 'osFE' },
-  { owner: 'FarMart', repo: 'pro-app', field: 'proFE', path: 'packages/web/package.json' },
-  { owner: 'FarMart', repo: 'pro-app', field: 'proNative', path: 'packages/native/package.json' }
-];
+// Load repo configs from environment variable
+const getRepoConfigs = (): GitHubRepo[] => {
+  const configsJson = import.meta.env.VITE_GITHUB_REPOS;
+  if (!configsJson) {
+    console.warn('VITE_GITHUB_REPOS not configured');
+    return [];
+  }
+  try {
+    return JSON.parse(configsJson);
+  } catch (e) {
+    console.error('Failed to parse VITE_GITHUB_REPOS:', e);
+    return [];
+  }
+};
+
+const REPO_CONFIGS: GitHubRepo[] = getRepoConfigs();
 
 export default function ReleaseNotesSummarizer() {
   const [formData, setFormData] = useState({
@@ -33,6 +43,32 @@ export default function ReleaseNotesSummarizer() {
   const [fetchingVersions, setFetchingVersions] = useState<Record<string, boolean>>({});
 
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [fieldLabels] = useState({
+    osBE: 'Backend',
+    osFE: 'Web App',
+    proFE: 'Mobile App',
+    proNative: 'Native Build'
+  });
+
+  // Load saved form data on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('releaseNotesFormData');
+    if (saved) {
+      try {
+        setFormData(JSON.parse(saved));
+      } catch (e) {
+        console.error('Failed to load saved form data:', e);
+      }
+    }
+  }, []);
+
+  // Auto-save form data every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      localStorage.setItem('releaseNotesFormData', JSON.stringify(formData));
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [formData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e;
@@ -46,16 +82,30 @@ export default function ReleaseNotesSummarizer() {
     setFetchingVersions(prev => ({ ...prev, [config.field]: true }));
     setNotification(null);
 
+    const fieldLabel = fieldLabels[config.field];
+
     try {
       const packagePath = config.path || 'package.json';
-      // Use raw GitHub URL to avoid CORS issues
-      const branch = 'main'; // or 'master' depending on your default branch
-      const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${branch}/${packagePath}`;
-      
-      const response = await fetch(rawUrl);
+      const branches = ['main', 'master'];
+      let response = null;
+      let lastError = null;
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+      // Try both main and master branches
+      for (const branch of branches) {
+        const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${branch}/${packagePath}`;
+        try {
+          const res = await fetch(rawUrl);
+          if (res.ok) {
+            response = res;
+            break;
+          }
+        } catch (e) {
+          lastError = e;
+        }
+      }
+
+      if (!response) {
+        throw new Error(`Failed to fetch from any branch: ${lastError || 'Unknown error'}`);
       }
 
       const packageJson = await response.json();
@@ -63,16 +113,16 @@ export default function ReleaseNotesSummarizer() {
       
       if (version) {
         handleInputChange({ name: config.field, value: version });
-        setNotification({ type: 'success', message: `Fetched version ${version} from ${config.repo}` });
-        setTimeout(() => setNotification(null), 3000);
+        setNotification({ type: 'success', message: `Fetched version ${version} for ${fieldLabel}` });
+        setTimeout(() => setNotification(null), 8000);
       } else {
-        setNotification({ type: 'error', message: `No version found in ${config.repo}` });
+        setNotification({ type: 'error', message: `No version found for ${fieldLabel}` });
       }
     } catch (error) {
-      console.error(`Error fetching version from ${config.repo}:`, error);
+      console.error(`Error fetching ${fieldLabel} version:`, error);
       setNotification({ 
         type: 'error', 
-        message: `Failed to fetch from ${config.repo}: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        message: `Failed to fetch ${fieldLabel} version: ${error instanceof Error ? error.message : 'Unknown error'}` 
       });
     } finally {
       setFetchingVersions(prev => ({ ...prev, [config.field]: false }));
@@ -286,30 +336,39 @@ Return ONLY the formatted release message, nothing else.`;
           <div className="bg-white rounded-lg shadow-lg p-6">
             
             {notification && (
-              <div className={`mb-4 p-3 rounded-md text-sm ${
+              <div className={`mb-4 p-3 rounded-md text-sm flex items-start justify-between ${
                 notification.type === 'success' 
                   ? 'bg-green-50 border border-green-200 text-green-800' 
                   : 'bg-red-50 border border-red-200 text-red-800'
               }`}>
-                {notification.message}
+                <span>{notification.message}</span>
+                <button 
+                  onClick={() => setNotification(null)}
+                  className="ml-2 text-gray-500 hover:text-gray-700"
+                  aria-label="Dismiss notification"
+                >
+                  ×
+                </button>
               </div>
             )}
 
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
                 <h2 className="text-xl font-semibold text-gray-800">Release Information</h2>
-                <button
-                  onClick={fetchAllVersions}
-                  disabled={Object.values(fetchingVersions).some(v => v)}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
-                >
-                  {Object.values(fetchingVersions).some(v => v) ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                  Fetch All Versions
-                </button>
+                {REPO_CONFIGS.length > 0 && (
+                  <button
+                    onClick={fetchAllVersions}
+                    disabled={Object.values(fetchingVersions).some(v => v)}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+                  >
+                    {Object.values(fetchingVersions).some(v => v) ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4" />
+                    )}
+                    Fetch All Versions
+                  </button>
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
@@ -325,14 +384,16 @@ Return ONLY the formatted release message, nothing else.`;
                       placeholder="e.g., 4.3.1"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[0])}
-                      disabled={fetchingVersions['osBE']}
-                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
-                      title="Fetch from farmartos-backend"
-                    >
-                      {fetchingVersions['osBE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    </button>
+                    {REPO_CONFIGS[0] && (
+                      <button
+                        onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[0])}
+                        disabled={fetchingVersions['osBE']}
+                        className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                        title="Fetch from GitHub"
+                      >
+                        {fetchingVersions['osBE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -348,14 +409,16 @@ Return ONLY the formatted release message, nothing else.`;
                       placeholder="e.g., 12.3.1"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[1])}
-                      disabled={fetchingVersions['osFE']}
-                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
-                      title="Fetch from farmartos-frontend"
-                    >
-                      {fetchingVersions['osFE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    </button>
+                    {REPO_CONFIGS[1] && (
+                      <button
+                        onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[1])}
+                        disabled={fetchingVersions['osFE']}
+                        className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                        title="Fetch from GitHub"
+                      >
+                        {fetchingVersions['osFE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -374,14 +437,16 @@ Return ONLY the formatted release message, nothing else.`;
                       placeholder="e.g., 3.0.1"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[2])}
-                      disabled={fetchingVersions['proFE']}
-                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
-                      title="Fetch from pro-app (web)"
-                    >
-                      {fetchingVersions['proFE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    </button>
+                    {REPO_CONFIGS[2] && (
+                      <button
+                        onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[2])}
+                        disabled={fetchingVersions['proFE']}
+                        className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                        title="Fetch from GitHub"
+                      >
+                        {fetchingVersions['proFE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -397,14 +462,16 @@ Return ONLY the formatted release message, nothing else.`;
                       placeholder="e.g., 10.2.0"
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     />
-                    <button
-                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[3])}
-                      disabled={fetchingVersions['proNative']}
-                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
-                      title="Fetch from pro-app (native)"
-                    >
-                      {fetchingVersions['proNative'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                    </button>
+                    {REPO_CONFIGS[3] && (
+                      <button
+                        onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[3])}
+                        disabled={fetchingVersions['proNative']}
+                        className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                        title="Fetch from GitHub"
+                      >
+                        {fetchingVersions['proNative'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -424,8 +491,11 @@ Return ONLY the formatted release message, nothing else.`;
                     />
                     <button
                       onClick={() => {
-                        const today = new Date().toISOString().split('T')[0];
+                        const now = new Date();
+                        const today = now.toISOString().split('T')[0];
+                        const currentTime = now.toTimeString().slice(0, 5);
                         handleInputChange({ name: 'releaseDate', value: today });
+                        handleInputChange({ name: 'releaseTime', value: currentTime });
                       }}
                       className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium whitespace-nowrap"
                     >
@@ -466,12 +536,39 @@ Return ONLY the formatted release message, nothing else.`;
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Ticket Details *
-                  {!formData.ticketDetails.trim() && (
-                    <span className="text-red-500 ml-1">(required)</span>
-                  )}
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Ticket Details *
+                    {!formData.ticketDetails.trim() && (
+                      <span className="text-red-500 ml-1">(required)</span>
+                    )}
+                  </label>
+                  <button
+                    onClick={() => {
+                      if (formData.ticketDetails.trim()) {
+                        // Clear the field if it has content
+                        handleInputChange({ name: 'ticketDetails', value: '' });
+                      } else {
+                        // Insert example if empty
+                        const example = `FM-123: Fixed login timeout issue for mobile users
+FM-124: Added dark mode toggle to settings
+FM-125: Improved dashboard loading speed
+
+Bug fixes:
+- Fixed crash when accessing reports page
+- Resolved notification delay issue
+
+Features:
+- New export to CSV functionality
+- Enhanced search filters`;
+                        handleInputChange({ name: 'ticketDetails', value: example });
+                      }
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-800 underline"
+                  >
+                    {formData.ticketDetails.trim() ? 'Clear Example' : 'Insert Example'}
+                  </button>
+                </div>
                 <textarea
                   name="ticketDetails"
                   value={formData.ticketDetails}
@@ -481,7 +578,7 @@ Return ONLY the formatted release message, nothing else.`;
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  Include Jira tickets, PR descriptions, or release notes
+                  Tip: Include Jira ticket IDs, brief descriptions, and categorize by type (Bug fixes, Features, Improvements)
                 </p>
               </div>
 
@@ -503,11 +600,37 @@ Return ONLY the formatted release message, nothing else.`;
                     </>
                   )}
                 </button>
-                {!canGenerate && (
-                  <p className="text-xs text-gray-500 text-center">
-                    Fill in Date, Time, and Ticket Details to generate
-                  </p>
-                )}
+                
+                <div className="flex gap-2">
+                  {!canGenerate && (
+                    <p className="text-xs text-gray-500 text-center flex-1">
+                      Fill in Date, Time, and Ticket Details to generate
+                    </p>
+                  )}
+                  {canGenerate && (
+                    <button
+                      onClick={() => {
+                        setFormData({
+                          osBE: '',
+                          osFE: '',
+                          proFE: '',
+                          proNative: '',
+                          releaseDate: '',
+                          releaseTime: '',
+                          ticketDetails: '',
+                          downtime: ''
+                        });
+                        setGeneratedMessage('');
+                        localStorage.removeItem('releaseNotesFormData');
+                        setNotification({ type: 'success', message: 'Form cleared successfully' });
+                        setTimeout(() => setNotification(null), 3000);
+                      }}
+                      className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium"
+                    >
+                      Clear All
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           </div>
