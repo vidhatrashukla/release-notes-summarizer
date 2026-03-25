@@ -1,5 +1,19 @@
 import React, { useState } from 'react';
-import { Copy, Sparkles, Loader2 } from 'lucide-react';
+import { Copy, Sparkles, Loader2, RefreshCw } from 'lucide-react';
+
+interface GitHubRepo {
+  owner: string;
+  repo: string;
+  field: 'osBE' | 'osFE' | 'proFE' | 'proNative';
+  path?: string;
+}
+
+const REPO_CONFIGS: GitHubRepo[] = [
+  { owner: 'FarMart-Engineering', repo: 'farmartos-backend', field: 'osBE' },
+  { owner: 'FarMart-Engineering', repo: 'farmartos-frontend', field: 'osFE' },
+  { owner: 'FarMart', repo: 'pro-app', field: 'proFE', path: 'packages/web/package.json' },
+  { owner: 'FarMart', repo: 'pro-app', field: 'proNative', path: 'packages/native/package.json' }
+];
 
 export default function ReleaseNotesSummarizer() {
   const [formData, setFormData] = useState({
@@ -16,6 +30,9 @@ export default function ReleaseNotesSummarizer() {
   const [generatedMessage, setGeneratedMessage] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [fetchingVersions, setFetchingVersions] = useState<Record<string, boolean>>({});
+
+  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   const handleInputChange = (e) => {
     const { name, value } = e;
@@ -23,6 +40,49 @@ export default function ReleaseNotesSummarizer() {
       ...prev,
       [name]: value
     }));
+  };
+
+  const fetchVersionFromGitHub = async (config: GitHubRepo) => {
+    setFetchingVersions(prev => ({ ...prev, [config.field]: true }));
+    setNotification(null);
+
+    try {
+      const packagePath = config.path || 'package.json';
+      // Use raw GitHub URL to avoid CORS issues
+      const branch = 'main'; // or 'master' depending on your default branch
+      const rawUrl = `https://raw.githubusercontent.com/${config.owner}/${config.repo}/${branch}/${packagePath}`;
+      
+      const response = await fetch(rawUrl);
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
+      }
+
+      const packageJson = await response.json();
+      const version = packageJson.version;
+      
+      if (version) {
+        handleInputChange({ name: config.field, value: version });
+        setNotification({ type: 'success', message: `Fetched version ${version} from ${config.repo}` });
+        setTimeout(() => setNotification(null), 3000);
+      } else {
+        setNotification({ type: 'error', message: `No version found in ${config.repo}` });
+      }
+    } catch (error) {
+      console.error(`Error fetching version from ${config.repo}:`, error);
+      setNotification({ 
+        type: 'error', 
+        message: `Failed to fetch from ${config.repo}: ${error instanceof Error ? error.message : 'Unknown error'}` 
+      });
+    } finally {
+      setFetchingVersions(prev => ({ ...prev, [config.field]: false }));
+    }
+  };
+
+  const fetchAllVersions = async () => {
+    for (const config of REPO_CONFIGS) {
+      await fetchVersionFromGitHub(config);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -109,39 +169,56 @@ ${formData.ticketDetails}
 
 Generate a release message following this EXACT format:
 
-IMPORTANT - The message MUST follow this exact structure:
+IMPORTANT - The message MUST follow this exact structure and use WhatsApp-compatible formatting (use asterisks * for bold, ensure proper spacing):
 
 Line 1: 📱 ${versionLine}
 Line 2: 📅 ${formattedDate}
 Line 3: ⏰ ${formattedTime}
 
+CRITICAL: Use plain text emojis (📱 📅 ⏰) WITHOUT any code blocks, backticks, or special wrappers. Do NOT wrap emojis in :: or any other characters. The emojis must copy directly as shown.
+
 [Blank line]
 
-Subject: [Create a clear subject line based on the nature of changes]
+*Subject:* [Create a clear subject line based on the nature of changes. If any ticket is a "story", "epic", or "feature", explicitly mention this in the subject line]
 
 [Blank line]
 
 Dear all,
 
-We are making a [major/minor - choose based on scope of changes] release which is aimed at [briefly state the main goal - e.g., "improving system performance and fixing critical bugs" or "introducing new features for better user experience"].
+We are making a *[RELEASE TYPE]* release which is aimed at [briefly state the main goal].
 
-[Then organize the actual changes in numbered sections:]
+[RELEASE TYPE] should be one of:
+- *MAJOR* - if introducing significant new features, breaking changes, or major system updates (e.g., new modules, major UI overhauls)
+- *MINOR* - if introducing new features or substantial improvements without breaking changes
+- *PATCH* - if primarily bug fixes, small tweaks, or performance optimizations with no new features
 
-1. [Section Title - e.g., "Key Fixes:", "New Features:", "Improvements:"]
+Explicitly call out the release type in the first paragraph using the exact word "MAJOR", "MINOR", or "PATCH" in uppercase with asterisks.
+
+[Then organize the actual changes in numbered sections in this EXACT ORDER of magnitude:]
+
+*1. New Features:*
    - [Detail 1]
    - [Detail 2]
 
-2. [Next Section if needed]
+*2. Improvements:*
    - [Detail 1]
    - [Detail 2]
+
+*3. Bug Fixes:*
+   - [Detail 1]
+   - [Detail 2]
+
+[Only include sections that have relevant changes. If there are no new features, skip that section.]
 
 [Blank line]
 
 ${closingStatement}
 
 Style guidelines:
-- Determine if it's a major or minor release based on the ticket details
-- Bold important headers and section titles
+- CRITICAL: Format must be WhatsApp-compatible - use *asterisks* for bold text
+- Release type (MAJOR/MINOR/PATCH) must be explicitly stated in the first paragraph
+- If any ticket is a story/epic/feature, highlight this in the subject line
+- Bullet points must be ordered by magnitude: New Features first, Improvements second, Bug Fixes last
 - Use simple, non-technical language focused on business impact
 - Focus on WHAT changed and WHY it matters, not HOW it works
 - Keep sentences clear and concise
@@ -166,6 +243,11 @@ Return ONLY the formatted release message, nothing else.`;
         })
       });
 
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText || response.statusText}`);
+      }
+
       const data = await response.json();
 
       if (data.error) {
@@ -175,7 +257,8 @@ Return ONLY the formatted release message, nothing else.`;
       const message = data.choices?.[0]?.message?.content || "No response generated";
       setGeneratedMessage(message);
     } catch (error) {
-      setGeneratedMessage("Error generating release notes. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      setGeneratedMessage(`Error: ${errorMessage}`);
       console.error("Error:", error);
     } finally {
       setIsGenerating(false);
@@ -201,35 +284,79 @@ Return ONLY the formatted release message, nothing else.`;
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">Release Information</h2>
             
+            {notification && (
+              <div className={`mb-4 p-3 rounded-md text-sm ${
+                notification.type === 'success' 
+                  ? 'bg-green-50 border border-green-200 text-green-800' 
+                  : 'bg-red-50 border border-red-200 text-red-800'
+              }`}>
+                {notification.message}
+              </div>
+            )}
+
             <div className="space-y-4">
+              <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-200">
+                <h2 className="text-xl font-semibold text-gray-800">Release Information</h2>
+                <button
+                  onClick={fetchAllVersions}
+                  disabled={Object.values(fetchingVersions).some(v => v)}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors text-sm font-medium shadow-sm"
+                >
+                  {Object.values(fetchingVersions).some(v => v) ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                  Fetch All Versions
+                </button>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Backend Version
                   </label>
-                  <input
-                    type="text"
-                    name="osBE"
-                    value={formData.osBE}
-                    onChange={(e) => handleInputChange(e.target)}
-                    placeholder="e.g., 4.3.1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="osBE"
+                      value={formData.osBE}
+                      onChange={(e) => handleInputChange(e.target)}
+                      placeholder="e.g., 4.3.1"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[0])}
+                      disabled={fetchingVersions['osBE']}
+                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                      title="Fetch from farmartos-backend"
+                    >
+                      {fetchingVersions['osBE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Web App Version
                   </label>
-                  <input
-                    type="text"
-                    name="osFE"
-                    value={formData.osFE}
-                    onChange={(e) => handleInputChange(e.target)}
-                    placeholder="e.g., 12.3.1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="osFE"
+                      value={formData.osFE}
+                      onChange={(e) => handleInputChange(e.target)}
+                      placeholder="e.g., 12.3.1"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[1])}
+                      disabled={fetchingVersions['osFE']}
+                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                      title="Fetch from farmartos-frontend"
+                    >
+                      {fetchingVersions['osFE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -238,27 +365,47 @@ Return ONLY the formatted release message, nothing else.`;
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Mobile App Version
                   </label>
-                  <input
-                    type="text"
-                    name="proFE"
-                    value={formData.proFE}
-                    onChange={(e) => handleInputChange(e.target)}
-                    placeholder="e.g., 3.0.1"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="proFE"
+                      value={formData.proFE}
+                      onChange={(e) => handleInputChange(e.target)}
+                      placeholder="e.g., 3.0.1"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[2])}
+                      disabled={fetchingVersions['proFE']}
+                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                      title="Fetch from pro-app (web)"
+                    >
+                      {fetchingVersions['proFE'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Native Build Version
                   </label>
-                  <input
-                    type="text"
-                    name="proNative"
-                    value={formData.proNative}
-                    onChange={(e) => handleInputChange(e.target)}
-                    placeholder="e.g., 10.2.0"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      name="proNative"
+                      value={formData.proNative}
+                      onChange={(e) => handleInputChange(e.target)}
+                      placeholder="e.g., 10.2.0"
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => fetchVersionFromGitHub(REPO_CONFIGS[3])}
+                      disabled={fetchingVersions['proNative']}
+                      className="px-2 py-2 bg-gray-100 text-gray-600 rounded-md hover:bg-gray-200 transition-colors"
+                      title="Fetch from pro-app (native)"
+                    >
+                      {fetchingVersions['proNative'] ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -267,13 +414,24 @@ Return ONLY the formatted release message, nothing else.`;
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Release Date *
                   </label>
-                  <input
-                    type="date"
-                    name="releaseDate"
-                    value={formData.releaseDate}
-                    onChange={(e) => handleInputChange(e.target)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
+                  <div className="flex gap-2">
+                    <input
+                      type="date"
+                      name="releaseDate"
+                      value={formData.releaseDate}
+                      onChange={(e) => handleInputChange(e.target)}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button
+                      onClick={() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        handleInputChange({ name: 'releaseDate', value: today });
+                      }}
+                      className="px-3 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors text-sm font-medium whitespace-nowrap"
+                    >
+                      Today
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -310,6 +468,9 @@ Return ONLY the formatted release message, nothing else.`;
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Ticket Details *
+                  {!formData.ticketDetails.trim() && (
+                    <span className="text-red-500 ml-1">(required)</span>
+                  )}
                 </label>
                 <textarea
                   name="ticketDetails"
@@ -319,25 +480,35 @@ Return ONLY the formatted release message, nothing else.`;
                   rows={12}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-sm"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  Include Jira tickets, PR descriptions, or release notes
+                </p>
               </div>
 
-              <button
-                onClick={generateReleaseNotes}
-                disabled={!canGenerate || isGenerating}
-                className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Generating...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-5 h-5" />
-                    Generate Release Message
-                  </>
+              <div className="flex flex-col gap-2">
+                <button
+                  onClick={generateReleaseNotes}
+                  disabled={!canGenerate || isGenerating}
+                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      Generate Release Message
+                    </>
+                  )}
+                </button>
+                {!canGenerate && (
+                  <p className="text-xs text-gray-500 text-center">
+                    Fill in Date, Time, and Ticket Details to generate
+                  </p>
                 )}
-              </button>
+              </div>
             </div>
           </div>
 
@@ -358,9 +529,12 @@ Return ONLY the formatted release message, nothing else.`;
 
             <div className="bg-gray-50 rounded-md p-4 min-h-[500px] max-h-[700px] overflow-y-auto">
               {generatedMessage ? (
-                <pre className="whitespace-pre-wrap font-sans text-sm text-gray-800">
-                  {generatedMessage}
-                </pre>
+                <textarea
+                  readOnly
+                  value={generatedMessage}
+                  className="w-full h-full min-h-[480px] bg-transparent font-sans text-sm text-gray-800 resize-none focus:outline-none"
+                  style={{ whiteSpace: 'pre-wrap' }}
+                />
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400">
                   <div className="text-center">
