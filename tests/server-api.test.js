@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { handleGenerateRequest, handleVersionRequest } from '../server/api.js'
+import { handleGenerateRequest } from '../server/api.js'
 
 const originalEnv = { ...process.env }
 const originalFetch = global.fetch
@@ -40,43 +40,4 @@ test('handleGenerateRequest returns generated message on success', async () => {
 
   assert.equal(result.status, 200)
   assert.equal(JSON.parse(result.body).message, 'Generated release note')
-})
-
-test('handleVersionRequest falls back to manual entry when no config exists', async () => {
-  delete process.env.GITHUB_REPOS
-  const result = await handleVersionRequest({ url: 'http://localhost/api/version?field=osBE' })
-
-  assert.equal(result.status, 503)
-  assert.equal(JSON.parse(result.body).fallbackToManual, true)
-})
-
-test('handleVersionRequest returns package version from configured repo lookup', async () => {
-  process.env.GITHUB_REPOS = JSON.stringify([
-    { owner: 'demo', repo: 'demo', field: 'osBE', path: 'package.json' }
-  ])
-  process.env.GITHUB_TOKEN = 'token'
-  global.fetch = async () => ({
-    status: 200,
-    ok: true,
-    text: async () => JSON.stringify({ version: '1.2.3' })
-  })
-
-  const result = await handleVersionRequest({ url: 'http://localhost/api/version?field=osBE' })
-
-  assert.equal(result.status, 200)
-  assert.deepEqual(JSON.parse(result.body), {
-    field: 'osBE',
-    version: '1.2.3',
-    branch: 'main'
-  })
-})
-
-test('handleVersionRequest rejects unknown fields', async () => {
-  process.env.GITHUB_REPOS = JSON.stringify([
-    { owner: 'demo', repo: 'demo', field: 'osBE', path: 'package.json' }
-  ])
-
-  const result = await handleVersionRequest({ url: 'http://localhost/api/version?field=unknown' })
-  assert.equal(result.status, 400)
-  assert.equal(JSON.parse(result.body).error, 'Unknown version field.')
 })

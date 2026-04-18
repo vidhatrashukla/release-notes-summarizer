@@ -170,27 +170,3 @@ Style guidelines:
 
 Return ONLY the formatted release message, nothing else.`
 }
-
-export const summarizeVersionLookup = (results) => {
-  const successCount = results.filter(Boolean).length
-  const failureCount = results.length - successCount
-
-  if (successCount && !failureCount) {
-    return {
-      type: 'success',
-      message: `Fetched all ${successCount} version values.`
-    }
-  }
-
-  if (successCount) {
-    return {
-      type: 'error',
-      message: `Fetched ${successCount} version value${successCount === 1 ? '' : 's'}. ${failureCount} field${failureCount === 1 ? '' : 's'} still need manual entry.`
-    }
-  }
-
-  return {
-    type: 'error',
-    message: 'Version lookup is unavailable right now. Enter versions manually.'
-  }
-}

@@ -4,8 +4,7 @@ import {
   buildClosingStatement,
   buildReleasePrompt,
   formatDate,
-  formatTime,
-  summarizeVersionLookup
+  formatTime
 } from '../src/lib/release.js'
 
 test('formatDate keeps the intended local calendar day', () => {
@@ -39,11 +38,4 @@ test('buildReleasePrompt includes formatted schedule information', () => {
   assert.match(prompt, /Saturday, Apr 18, 2026/)
   assert.match(prompt, /1:45PM/)
   assert.match(prompt, /FarMart OS BE v1.2.3 \/ FE v4.5.6/)
-})
-
-test('summarizeVersionLookup reports mixed success accurately', () => {
-  assert.deepEqual(summarizeVersionLookup([true, false, true, false]), {
-    type: 'error',
-    message: 'Fetched 2 version values. 2 fields still need manual entry.'
-  })
 })

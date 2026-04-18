@@ -1,6 +1,5 @@
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
-const VERSION_FIELDS = new Set(['osBE', 'osFE', 'proFE', 'proNative']);
 
 const jsonHeaders = {
   'Content-Type': 'application/json; charset=utf-8'
@@ -9,23 +8,6 @@ const jsonHeaders = {
 const readEnv = (name) => process.env[name]?.trim();
 
 const getGroqApiKey = () => readEnv('GROQ_API_KEY') || readEnv('VITE_GROQ_API_KEY');
-
-const getGitHubToken = () => readEnv('GITHUB_TOKEN') || readEnv('GITHUB_API_TOKEN');
-
-const getGitHubRepoConfig = () => {
-  const raw = readEnv('GITHUB_REPOS') || readEnv('VITE_GITHUB_REPOS');
-  if (!raw) {
-    return [];
-  }
-
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (error) {
-    console.error('Failed to parse GITHUB_REPOS:', error);
-    return [];
-  }
-};
 
 const createResponse = (status, body) => ({
   status,
@@ -47,57 +29,6 @@ const readRequestBody = async (request) => {
   }
 
   return {};
-};
-
-const extractFieldConfig = (field) => {
-  if (!VERSION_FIELDS.has(field)) {
-    return null;
-  }
-
-  return getGitHubRepoConfig().find((config) => config.field === field) ?? null;
-};
-
-const fetchVersionFromGitHub = async (config) => {
-  const token = getGitHubToken();
-  const path = config.path || 'package.json';
-  const branches = ['main', 'master'];
-
-  for (const branch of branches) {
-    const url = `https://api.github.com/repos/${config.owner}/${config.repo}/contents/${path}?ref=${branch}`;
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'application/vnd.github.raw+json',
-        ...(token ? { Authorization: `Bearer ${token}` } : {})
-      }
-    });
-
-    if (response.status === 404) {
-      continue;
-    }
-
-    if (response.status === 401 || response.status === 403) {
-      throw new Error('GitHub version lookup is not authorized. Configure GITHUB_TOKEN or enter versions manually.');
-    }
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`GitHub lookup failed with HTTP ${response.status}: ${errorText || response.statusText}`);
-    }
-
-    const rawPackageJson = await response.text();
-    const parsedPackageJson = JSON.parse(rawPackageJson);
-
-    if (!parsedPackageJson.version) {
-      throw new Error('No version field was found in the configured package.json file.');
-    }
-
-    return {
-      version: parsedPackageJson.version,
-      branch
-    };
-  }
-
-  throw new Error('No supported branch was found for the configured repository.');
 };
 
 export const handleGenerateRequest = async (request) => {
@@ -167,39 +98,6 @@ export const handleGenerateRequest = async (request) => {
     return createResponse(502, {
       error: error instanceof Error ? error.message : 'Generation failed unexpectedly.',
       retryable: true
-    });
-  }
-};
-
-export const handleVersionRequest = async (request) => {
-  const url = new URL(request.url, 'http://localhost');
-  const field = url.searchParams.get('field') || '';
-  const config = extractFieldConfig(field);
-
-  if (!getGitHubRepoConfig().length) {
-    return createResponse(503, {
-      error: 'Version lookup is not configured. Enter versions manually.',
-      fallbackToManual: true
-    });
-  }
-
-  if (!config) {
-    return createResponse(400, {
-      error: 'Unknown version field.'
-    });
-  }
-
-  try {
-    const result = await fetchVersionFromGitHub(config);
-    return createResponse(200, {
-      field,
-      version: result.version,
-      branch: result.branch
-    });
-  } catch (error) {
-    return createResponse(502, {
-      error: error instanceof Error ? error.message : 'Version lookup failed.',
-      fallbackToManual: true
     });
   }
 };

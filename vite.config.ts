@@ -33,18 +33,6 @@ const apiDevMiddleware = () => ({
       const result = await handleGenerateRequest({ body })
       sendJson(res, result)
     })
-
-    server.middlewares.use('/api/version', async (req: any, res: any, next: any) => {
-      if (req.method !== 'GET') {
-        next()
-        return
-      }
-
-      const { handleVersionRequest } = await import('./server/api.js')
-      const origin = `http://${req.headers.host || 'localhost:5173'}`
-      const result = await handleVersionRequest({ url: new URL(req.url, origin).toString() })
-      sendJson(res, result)
-    })
   }
 })
 

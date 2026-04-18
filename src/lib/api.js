@@ -15,14 +15,3 @@ export const requestGeneratedMessage = async (prompt) => {
 
   return data.message || 'No response generated'
 }
-
-export const requestVersion = async (field) => {
-  const response = await fetch(`/api/version?field=${field}`)
-  const data = await response.json()
-
-  if (!response.ok) {
-    throw new Error(data.error || 'Version lookup failed.')
-  }
-
-  return data
-}
