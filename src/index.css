@@ -1,12 +1,374 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+:root {
+  color-scheme: light;
+  --page: #f7f7f5;
+  --panel: #ffffff;
+  --text: #111111;
+  --muted: #6b6b6b;
+  --line: #dddddd;
+  --soft: #f0f0ec;
+  --success: #eef7f0;
+  --error: #fff2ee;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background: var(--page);
+  color: var(--text);
+  font-family: 'Avenir Next', 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+a {
+  color: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.page-frame {
+  width: min(1080px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+.page-header {
+  margin-bottom: 1rem;
+}
+
+.page-title {
+  margin: 0;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+
+.page-subtitle {
+  margin: 0.35rem 0 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.notice-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.875rem;
+  background: var(--panel);
+}
+
+.notice-success {
+  background: var(--success);
+}
+
+.notice-error {
+  background: var(--error);
+}
+
+.notice-dismiss {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.1rem;
+}
+
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.95fr);
+  gap: 1rem;
+}
+
+.panel-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+  padding: 1.25rem;
+}
+
+.section-header,
+.field-heading-row,
+.panel-toolbar,
+.action-helper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.section-header {
+  margin-bottom: 1.25rem;
+}
+
+.panel-toolbar {
+  margin-bottom: 1rem;
+}
+
+.section-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.form-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.version-grid,
+.schedule-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.field-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.field-label {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.field-label-inline {
+  margin-bottom: 0;
+}
+
+.field-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: var(--panel);
+  padding: 0.8rem 0.9rem;
+  color: var(--text);
+}
+
+.field-textarea,
+.output-textarea {
+  resize: vertical;
+}
+
+.generate-action,
+.secondary-action,
+.field-inline-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  cursor: pointer;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.generate-action {
+  background: var(--text);
+  border-color: var(--text);
+  color: #ffffff;
+  width: 100%;
+  padding: 0.85rem 1rem;
+  font-weight: 600;
+}
+
+.secondary-action,
+.field-inline-button {
+  background: var(--panel);
+  color: var(--text);
+}
+
+.secondary-action {
+  padding: 0.65rem 0.85rem;
+}
+
+.field-inline-button {
+  padding: 0.7rem 0.9rem;
+}
+
+.generate-action:hover {
+  background: #222222;
+  border-color: #222222;
+}
+
+.secondary-action:hover,
+.field-inline-button:hover {
+  background: var(--soft);
+}
+
+.field-input:focus,
+.generate-action:focus,
+.secondary-action:focus,
+.field-inline-button:focus,
+.ghost-link:focus,
+.notice-dismiss:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+}
+
+.ghost-link {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.helper-copy {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.helper-copy-compact {
+  min-height: 1.2rem;
+}
+
+.action-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.output-shell {
+  min-height: 32rem;
+  border: 1px solid var(--line);
+  border-radius: 0.75rem;
+  background: #fafaf8;
+  padding: 0.9rem;
+}
+
+.output-textarea {
+  width: 100%;
+  min-height: 29rem;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.output-textarea:focus {
+  outline: none;
+}
+
+.output-empty {
+  display: flex;
+  min-height: 29rem;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  text-align: center;
+}
+
+.output-empty p {
+  margin: 0;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+.page-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.footer-link {
+  text-decoration: none;
+}
+
+.footer-link:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(17, 17, 17, 0.08);
+  border-radius: 0.25rem;
+}
+
+@media (max-width: 960px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .version-grid,
+  .schedule-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .page-frame {
+    width: min(100% - 1rem, 1080px);
+    padding-top: 1rem;
+  }
+
+  .panel-card {
+    padding: 1rem;
+    border-radius: 0.875rem;
+  }
+
+  .page-title {
+    font-size: 1.45rem;
+  }
+
+  .section-header,
+  .field-heading-row,
+  .panel-toolbar,
+  .action-helper-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .field-row {
+    flex-wrap: wrap;
+  }
+
+  .field-inline-button {
+    width: 100%;
+  }
+
+  .page-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
